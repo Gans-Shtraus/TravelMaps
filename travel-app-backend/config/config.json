@@ -1,14 +1,12 @@
 {
-
   "development": {
-    "username": "${DB_USER}",
-    "password": "${DB_PASSWORD}",
-    "database": "${DB_NAME}",
-    "host": "${DB_HOST}",
-    "port": "${DB_PORT}",
-    "dialect": "${DB_DIALECT}"
+    "username": "postgres",
+    "password": "0259",
+    "database": "travel_app",
+    "host": "localhost",
+    "port": "5432",
+    "dialect": "postgresql"
   },
-
   "test": {
     "username": "${DB_USER}",
     "password": "${DB_PASSWORD}",
