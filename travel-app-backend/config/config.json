@@ -1,0 +1,28 @@
+{
+
+  "development": {
+    "username": "${DB_USER}",
+    "password": "${DB_PASSWORD}",
+    "database": "${DB_NAME}",
+    "host": "${DB_HOST}",
+    "port": "${DB_PORT}",
+    "dialect": "${DB_DIALECT}"
+  },
+
+  "test": {
+    "username": "${DB_USER}",
+    "password": "${DB_PASSWORD}",
+    "database": "travel_app_test",
+    "host": "${DB_HOST}",
+    "port": "${DB_PORT}",
+    "dialect": "${DB_DIALECT}"
+  },
+  "production": {
+    "username": "${DB_USER}",
+    "password": "${DB_PASSWORD}",
+    "database": "travel_app_production",
+    "host": "${DB_HOST}",
+    "port": "${DB_PORT}",
+    "dialect": "${DB_DIALECT}"
+  }
+}
