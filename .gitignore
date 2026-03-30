@@ -1,7 +1,9 @@
-# === Next.js Build Output ===
+# Next.js build output
 .next/
 out/
-build/
+.cache/
+.turbo/
+.vercel/
 
 # === Node.js / Server ===
 node_modules/

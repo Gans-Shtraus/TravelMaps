@@ -19,15 +19,21 @@ interface City {
   attractions?: Attraction[];
 }
 
-function AttractionSearch({
+type SearchResult =
+  | { type: 'city'; city: City }
+  | { type: 'attraction'; attraction: Attraction; cityName: string };
+
+function SearchComponent({
   cities,
   onAttractionSelect,
+  onCitySelect,
 }: {
   cities: City[];
   onAttractionSelect: (attraction: Attraction, cityName: string) => void;
+  onCitySelect: (city: City) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredAttractions, setFilteredAttractions] = useState<{ attraction: Attraction; cityName: string }[]>([]);
+  const [filteredResults, setFilteredResults] = useState<SearchResult[]>([]);
   const map = useMap();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,26 +41,50 @@ function AttractionSearch({
     setSearchTerm(term);
 
     if (term.length > 1) {
-      const results = cities.flatMap(city =>
+      const results: SearchResult[] = [];
+
+      // Поиск городов
+      const cityResults = cities.filter(city =>
+        city.name.toLowerCase().includes(term.toLowerCase())
+      ).map(city => ({ type: 'city', city } as SearchResult));
+      results.push(...cityResults);
+
+      // Поиск достопримечательностей
+      const attractionResults = cities.flatMap(city =>
         (city.attractions || []).map(attraction => ({ attraction, cityName: city.name }))
       ).filter(({ attraction }) =>
         attraction.name.toLowerCase().includes(term.toLowerCase()) ||
         (attraction.description || "").toLowerCase().includes(term.toLowerCase())
-      );
-      setFilteredAttractions(results);
+      ).map(({ attraction, cityName }) => ({
+        type: 'attraction',
+        attraction,
+        cityName
+      }) as SearchResult);
+      results.push(...attractionResults);
+
+      setFilteredResults(results);
     } else {
-      setFilteredAttractions([]);
+      setFilteredResults([]);
     }
   };
 
-  const handleAttractionClick = ({ attraction, cityName }: { attraction: Attraction; cityName: string }) => {
-    setSearchTerm(attraction.name);
-    setFilteredAttractions([]);
-    onAttractionSelect(attraction, cityName);
+  const handleResultClick = (result: SearchResult) => {
+    setSearchTerm(result.type === 'city' ? result.city.name : result.attraction.name);
+    setFilteredResults([]);
 
-    // Центрируем карту на достопримечательности
-    const [lat, lng] = attraction.coordinates.split(",").map(Number);
-    map.setView([lat, lng], 15);
+    if (result.type === 'attraction') {
+      onAttractionSelect(result.attraction, result.cityName);
+      const [lat, lng] = result.attraction.coordinates.split(",").map(Number);
+      map.setView([lat, lng], 15);
+    } else {
+      onCitySelect(result.city);
+      const [latStr, lngStr] = result.city.coordinates.split(",");
+      const lat = parseFloat(latStr);
+      const lng = parseFloat(lngStr);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        map.setView([lat, lng], 10);
+      }
+    }
   };
 
   return (
@@ -70,7 +100,7 @@ function AttractionSearch({
     >
       <input
         type="text"
-        placeholder="Поиск достопримечательностей..."
+        placeholder="Поиск городов и достопримечательностей..."
         value={searchTerm}
         onChange={handleInputChange}
         style={{
@@ -81,7 +111,7 @@ function AttractionSearch({
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
         }}
       />
-      {filteredAttractions.length > 0 && (
+      {filteredResults.length > 0 && (
         <div
           style={{
             backgroundColor: "white",
@@ -91,18 +121,24 @@ function AttractionSearch({
             overflowY: "auto",
           }}
         >
-          {filteredAttractions.map(({ attraction, cityName }, index) => (
+          {filteredResults.map((result, index) => (
             <div
               key={index}
-              onClick={() => handleAttractionClick({ attraction, cityName })}
+              onClick={() => handleResultClick(result)}
               style={{
                 padding: "10px",
                 cursor: "pointer",
                 borderBottom: "1px solid #eee",
               }}
             >
-              <div style={{ fontWeight: "bold" }}>{attraction.name}</div>
-              <div style={{ fontSize: "12px", color: "#666" }}>{cityName}</div>
+              <div style={{ fontWeight: "bold" }}>
+                {result.type === 'city' ? result.city.name : result.attraction.name}
+              </div>
+              <div style={{ fontSize: "12px", color: "#666" }}>
+                {result.type === 'city'
+                  ? "Город"
+                  : `Город: ${result.cityName}`}
+              </div>
             </div>
           ))}
         </div>
@@ -119,6 +155,16 @@ const RussiaMap = ({ cities }: { cities: City[] }) => {
     [30.0, -20.0],
     [85.0, 190.0],
   ];
+
+  const handleCitySelect = (city: City) => {
+    setSelectedCity(city);
+    setSelectedAttraction(null);
+  };
+
+  const handleAttractionSelect = (attraction: Attraction, cityName: string) => {
+    setSelectedAttraction(attraction);
+    setSelectedCity(null);
+  };
 
   return (
     <MapContainer
@@ -138,12 +184,10 @@ const RussiaMap = ({ cities }: { cities: City[] }) => {
         bounds={russiaBounds}
       />
 
-      <AttractionSearch
+      <SearchComponent
         cities={cities}
-        onAttractionSelect={(attraction, cityName) => {
-          setSelectedAttraction(attraction);
-          setSelectedCity(null);
-        }}
+        onAttractionSelect={handleAttractionSelect}
+        onCitySelect={handleCitySelect}
       />
 
       {/* Отображение городов */}
@@ -180,7 +224,7 @@ const RussiaMap = ({ cities }: { cities: City[] }) => {
         );
       })}
 
-      {/* Отображение достопримечательностей */}
+            {/* Отображение достопримечательностей */}
       {cities.map((city) =>
         city.attractions?.map((attraction) => {
           const [latStr, lngStr] = attraction.coordinates.split(",");
@@ -220,7 +264,7 @@ const RussiaMap = ({ cities }: { cities: City[] }) => {
         })
       )}
 
-            {/* Информация о выбранной достопримечательности */}
+      {/* Информация о выбранной достопримечательности */}
       {selectedAttraction && (
         <div
           style={{
@@ -283,7 +327,7 @@ const RussiaMap = ({ cities }: { cities: City[] }) => {
                   <li key={attraction.id}>
                     <strong>{attraction.name}</strong>
                     {attraction.description && (
-                      <span> — {attraction.description}</span>
+              <span> — {attraction.description}</span>
             )}
           </li>
         ))}
